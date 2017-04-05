@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """Run fire on the given module or file
 
-Usage: fire [-m module] [-f file] [fire-style arguments to desired python object]
+Usage: fire [module | file] [fire-style arguments to desired python object]
 
 Example:
 
-$ fire -m random Random gauss 3 4
+$ fire random Random gauss 3 4
 5.056813212816271
 
 Documentation on fire:
@@ -19,17 +19,28 @@ import imp
 import sys
 
 if __name__ == '__main__':
-    if sys.argv[1] == '-m':
-        (fileobj, pathname, description) = imp.find_module(sys.argv[2])
-        module = imp.load_module('module', fileobj, pathname, description)
-        sys.argv = sys.argv[2:]
-    elif sys.argv[1] == '-f':
-        module = imp.load_source('module', sys.argv[2])
-        sys.argv = sys.argv[2:]
-    else:
-        print("Usage: fire [-m module] [-f file] [fire-style arguments to desired python object]")
-        sys.exit(1)
+    module_or_file = sys.argv[1]
 
+    try:
+        fileobj = None
+        (fileobj, pathname, description) = imp.find_module(module_or_file)
+        module = imp.load_module('module', fileobj, pathname, description)
+        sys.argv = sys.argv[1:]
+
+    except ImportError:
+        try:
+            module = imp.load_source('module', module_or_file)
+            sys.argv = sys.argv[1:]
+        except (ImportError, EnvironmentError):
+            # or be specific about FileNotFoundError and ? in python2?
+            print("No such module or file: %s" % module_or_file)
+            print("Usage: fire [module | file] [fire-style arguments to desired python object]")
+            sys.exit(1)
+        
+    finally:
+        if fileobj:
+            fileobj.close()
+        
     from module import *
 
     fire.Fire()
